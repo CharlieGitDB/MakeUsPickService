@@ -12,11 +12,11 @@
   "dependencies": {
     "axios": "0.21.1",
     "cuid": "2.1.8",
-    "dotenv-flow": "^3.2.0",
+    "dotenv-flow": "3.2.0",
     "express": "4.17.1",
     "generate-password": "1.6.0",
     "ioredis": "4.24.4",
-    "pm2": "^4.5.5",
+    "pm2": "4.5.5",
     "redis-json": "5.0.0"
   },
   "devDependencies": {
