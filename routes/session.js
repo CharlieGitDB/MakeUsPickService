@@ -1,110 +1,69 @@
 const express = require('express');
 const router = express.Router();
-const generator = require('generate-password');
-const redisJson = require('../services/redis');
-const cuid = require('cuid');
-const getRestaurants = require('../services/restaurants');
+const LobbyService = require('../services/lobbyservice');
+const RestaurantService = require('../services/restaurantservice');
+const UserService = require('../services/userservice');
 
 router.post('/create/:postalCode', async (req, res) => {
-    const { postalCode } = req.params;
+    const {postalCode} = req.params;
 
     if (postalCode == null || postalCode === '') {
         return res.status(400).send('Postal Code is required');
     }
 
-    const roomCode = await generateRoomCode();
-    const newUserId = cuid();
-    let restaurants;
+    try {
+        const restaurants = await RestaurantService.getRestaurants(postalCode);
+        const lobby = await LobbyService.create(restaurants);
+        const user = await UserService.create(lobby.lobbyCode);
+
+        res.send({
+            uid: user.uid,
+            lobbyCode: lobby.lobbyCode,
+            restaurants: lobby.restaurants
+        });
+    } catch(error) {
+        res.status(500).send(`Unable to create lobby: ${error}`);
+    }
+});
+
+router.post('/join/:lobbyCode', async (req, res) => {
+    const {lobbyCode} = req.params;
+
+    if (lobbyCode == null || lobbyCode === '') {
+        return res.status(400).send('Lobby code is required');
+    }
 
     try {
-        restaurants = await getRestaurants(postalCode);
-    } catch(error) {
-        return res.status(500).send(`Unable to create room: ${error}`);
-    }
+        const lobby = await LobbyService.getLobby(lobbyCode);
+        const joinedUser = await UserService.create(lobby.lobbyCode);
 
-    let newRoom = {
-        roomCode,
-        users: [
-            {
-                uid: newUserId,
-                finished: false
-            }
-        ],
-        restaurants,
-        finished: false
-    };
-    
-    redisJson.set(roomCode, newRoom);
-
-    res.send({
-        uid: newUserId,
-        roomCode,
-        restaurants
-    });
-});
-
-router.post('/join/:roomCode', async (req, res) => {
-    const {roomCode} = req.params;
-
-    if (roomCode == null || roomCode === '') {
-        return res.status(400).send('Room code is required');
-    }
-
-    const room = await redisJson.get(roomCode);
-
-    if (room == null) {
-        return res.status(500).send('Unable to find room');
-    }
-    if (room.users.length >= 2) {
-        return res.status(500).send('Room is full');
-    }
-
-    const joinedUser = {
-        uid: cuid(),
-        finished: false
-    }
-    
-    room.users.push(joinedUser);
-
-    redisJson.set(roomCode, room);
-
-    res.send({
-        uid: joinedUser.uid,
-        roomCode,
-        restaurants: room.restaurants.reverse()
-    });
-});
-
-router.get('/poll/:roomCode', async (req, res) => {
-    const {roomCode} = req.params;
-
-    if (roomCode == null || roomCode === '') {
-        return res.status(400).send('Room code is required');
-    }
-
-    const room = await redisJson.get(roomCode);
-
-    if (room == null) {
-        return res.status(500).send('Unable to find room');
-    }
-
-    return res.send(room.users.length >= 2);
-});
-
-async function generateRoomCode() {
-    let roomCode = generator.generate({
-        length: 8
-    }).toUpperCase();
-
-    let room = await redisJson.get(roomCode)
-    if (room != null) {
-        while (room != null) {
-            roomCode = generateRoomCode();
-            room = await redisJson.get(roomCode);
+        if (lobby.users.length >= 2) {
+            return res.status(500).send('Unable to join lobby: Lobby is full');
         }
+
+        res.send({
+            uid: joinedUser.uid,
+            lobbyCode,
+            restaurants: lobby.restaurants.reverse()
+        });
+    } catch(error) {
+        throw new Error(`Unable to join lobby: ${error}`);
+    }
+});
+
+router.get('/poll/:lobbyCode', async (req, res) => {
+    const {lobbyCode} = req.params;
+
+    if (lobbyCode == null || lobbyCode === '') {
+        return res.status(400).send('Lobby code is required');
     }
 
-    return roomCode;
-}
+    try {
+        const lobby = await LobbyService.getLobby(lobbyCode);
+        return res.send(lobby.users.length >= 2);
+    } catch(error) {
+        throw new Error(`Unable to find lobby: ${error}`)
+    }
+});
 
 module.exports = router;
