@@ -1,16 +1,20 @@
 const Redis = require('ioredis');
 const redisJSON = require('redis-json');
 
-let redisJson;
-try {
-    const REDIS_PORT = process.env.REDIS_PORT || 6379;
-    const redis = new Redis(REDIS_PORT);
-    redisJson = new redisJSON(redis);
-    redisJson.set('init', true);
-    redisJSON.get('init');
-} catch(error) {
-    console.log(error, 'tried to connect to redis failed');
-    process.exit(0);
-}
+let connectAttempts = 0;
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const redis = new Redis(REDIS_PORT);
+const redisJson = new redisJSON(redis);
+
+redis.on('error', (error) => {
+    if (error.code === 'ECONNREFUSED') {
+        connectAttempts++
+        if (connectAttempts > 15) {
+            redis.quit();
+            console.log('Shutting down Node Server & Redis, cannot connect to Redis');
+            process.exit(-1);
+        }
+    }
+});
 
 module.exports = redisJson;
