@@ -28,7 +28,6 @@ router.post('/:lobbyCode', async (req, res) => {
     }
 });
 
-//test finished
 router.post('/:lobbyCode/finished', async (req, res) => {
     const {lobbyCode} = req.params;
     const {uid} = req.body;
