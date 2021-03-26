@@ -4,6 +4,7 @@ const UserService = require('./userservice');
 
 function RestaurantService() {
     const API_KEY = process.env.API_KEY;
+    console.log(API_KEY, 'api key');
     const GOOGLE_PLACES_API_URL = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
 
     this.getRestaurants = async function(postalCode) {
@@ -25,7 +26,7 @@ function RestaurantService() {
                 if (openingHours == null) {
                     return false;
                 }
-                
+
                 return openingHours.open_now === true;
             });
 
