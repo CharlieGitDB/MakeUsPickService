@@ -13,5 +13,5 @@ app.use('/session', sessionRouter);
 app.use('/choice', choiceRouter);
 
 app.listen(PORT, () => {
-    console.log(`App running on ${PORT}`);
+    console.log(`App running on ${PORT}!`);
 });
